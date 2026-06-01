@@ -19,7 +19,7 @@ import { AppSession } from '../../app.component';
         </div>
         <div class="conn-badge">
           <span class="conn-db">{{ session().connection.database }}</span>
-          <span class="sep">@</span>
+          <span class="sep">&#64;</span>
           <span class="conn-host">{{ session().connection.host }}:{{ session().connection.port }}</span>
         </div>
         <button class="btn-disconnect" (click)="disconnect.emit()">Disconnect</button>
