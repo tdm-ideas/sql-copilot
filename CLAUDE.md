@@ -36,7 +36,7 @@ cp .env.example .env
 docker-compose up --build
 
 # Frontend: http://localhost:4200
-# Backend:  http://localhost:5000
+# Backend:  http://localhost:5050
 # Ollama:   http://localhost:11434
 ```
 
