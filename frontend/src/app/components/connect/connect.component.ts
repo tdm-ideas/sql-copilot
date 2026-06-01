@@ -195,11 +195,18 @@ export class ConnectComponent {
       const schema = await firstValueFrom(this.api.getSchema(connection));
       this.connected.emit({ connection, schema });
     } catch (err: any) {
-      this.error.set(
-        err?.error?.message ?? err?.message ?? 'Connection failed. Check your credentials and try again.'
-      );
+      this.error.set(toUserMessage(err));
     } finally {
       this.loading.set(false);
     }
   }
+}
+
+function toUserMessage(err: any): string {
+  if (err?.status === 0)
+    return 'Cannot reach the server. Make sure Docker Compose is running (docker-compose up).';
+  const body = err?.error;
+  if (body?.detail) return body.detail;
+  if (body?.error)  return body.error;
+  return err?.message ?? 'Connection failed. Check your credentials and try again.';
 }

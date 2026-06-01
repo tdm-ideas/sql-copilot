@@ -428,10 +428,9 @@ export class WorkspaceComponent {
         { role: 'assistant', sql: result.sql, explanation: result.explanation }
       ]);
     } catch (err: any) {
-      const msg = err?.error?.message ?? err?.message ?? 'Failed to generate query.';
       this.messages.update(m => [
         ...m.slice(0, -1),
-        { role: 'assistant', text: `Error: ${msg}` }
+        { role: 'assistant', text: `Error: ${toUserMessage(err)}` }
       ]);
     } finally {
       this.generating.set(false);
@@ -450,4 +449,15 @@ export class WorkspaceComponent {
   private scrollToBottom() {
     setTimeout(() => this.messagesEnd?.nativeElement?.scrollIntoView({ behavior: 'smooth' }), 50);
   }
+}
+
+function toUserMessage(err: any): string {
+  if (err?.status === 0)
+    return 'Lost connection to the server. Make sure the backend container is running.';
+  if (err?.status === 503)
+    return 'The AI model is not available. Run: docker exec -it sql-copilot-ollama ollama pull defog/sqlcoder-7b-2';
+  const body = err?.error;
+  if (body?.detail) return body.detail;
+  if (body?.error)  return body.error;
+  return err?.message ?? 'Failed to generate query.';
 }
