@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-copilot-frontend
+  namespace: sql-copilot
+  labels:
+    app: sql-copilot-frontend
+    app.kubernetes.io/part-of: sql-copilot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sql-copilot-frontend
+  template:
+    metadata:
+      labels:
+        app: sql-copilot-frontend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 0
+      containers:
+        - name: frontend
+          image: your-registry/sql-copilot-frontend:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /nginx-health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /nginx-health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: nginx-cache
+              mountPath: /var/cache/nginx
+            - name: nginx-pid
+              mountPath: /var/run
+      volumes:
+        - name: nginx-cache
+          emptyDir: {}
+        - name: nginx-pid
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql-copilot-frontend
+  namespace: sql-copilot
+  labels:
+    app: sql-copilot-frontend
+spec:
+  selector:
+    app: sql-copilot-frontend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+# OpenShift Route (instead of Kubernetes Ingress)
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: sql-copilot
+  namespace: sql-copilot
+  labels:
+    app: sql-copilot-frontend
+spec:
+  host: sql-copilot.apps.your-cluster.example.com
+  to:
+    kind: Service
+    name: sql-copilot-frontend
+    weight: 100
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+  wildcardPolicy: None

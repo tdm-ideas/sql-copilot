@@ -1,0 +1,16 @@
+# Enforce LF everywhere — containers run Linux and nginx/bash are sensitive to CRLF
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# True binary files — no EOL conversion
+*.png    binary
+*.jpg    binary
+*.ico    binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.eot    binary

@@ -1,0 +1,60 @@
+stages:
+  - build
+  - push
+  - deploy
+
+variables:
+  REGISTRY: $CI_REGISTRY
+  IMAGE_BACKEND: $CI_REGISTRY_IMAGE/backend
+  IMAGE_FRONTEND: $CI_REGISTRY_IMAGE/frontend
+  OPENSHIFT_NAMESPACE: sql-copilot
+
+# ── Build ──────────────────────────────────────────────────────
+build:backend:
+  stage: build
+  image: docker:26
+  services: [docker:26-dind]
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build
+        -t $IMAGE_BACKEND:$CI_COMMIT_SHA
+        -t $IMAGE_BACKEND:latest
+        -f backend/SqlCopilot.API/Dockerfile
+        ./backend
+    - docker push $IMAGE_BACKEND:$CI_COMMIT_SHA
+    - docker push $IMAGE_BACKEND:latest
+  only: [main, develop]
+
+build:frontend:
+  stage: build
+  image: docker:26
+  services: [docker:26-dind]
+  script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - docker build
+        --build-arg API_URL=$FRONTEND_API_URL
+        -t $IMAGE_FRONTEND:$CI_COMMIT_SHA
+        -t $IMAGE_FRONTEND:latest
+        ./frontend
+    - docker push $IMAGE_FRONTEND:$CI_COMMIT_SHA
+    - docker push $IMAGE_FRONTEND:latest
+  only: [main, develop]
+
+# ── Deploy ─────────────────────────────────────────────────────
+deploy:openshift:
+  stage: deploy
+  image: registry.redhat.io/openshift4/ose-cli:latest
+  environment:
+    name: production
+    url: https://sql-copilot.apps.your-cluster.example.com
+  script:
+    - oc login $OPENSHIFT_API_URL --token=$OPENSHIFT_TOKEN --insecure-skip-tls-verify
+    - oc project $OPENSHIFT_NAMESPACE
+    # Update image tags
+    - oc set image deployment/sql-copilot-backend backend=$IMAGE_BACKEND:$CI_COMMIT_SHA -n $OPENSHIFT_NAMESPACE
+    - oc set image deployment/sql-copilot-frontend frontend=$IMAGE_FRONTEND:$CI_COMMIT_SHA -n $OPENSHIFT_NAMESPACE
+    # Wait for rollout
+    - oc rollout status deployment/sql-copilot-backend -n $OPENSHIFT_NAMESPACE --timeout=3m
+    - oc rollout status deployment/sql-copilot-frontend -n $OPENSHIFT_NAMESPACE --timeout=3m
+  only: [main]
+  when: on_success

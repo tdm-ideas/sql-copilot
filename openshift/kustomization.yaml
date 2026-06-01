@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sql-copilot
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - backend-deployment.yaml
+  - frontend-deployment.yaml
+  - ollama-deployment.yaml
+
+# Override image tags for different environments:
+# images:
+#   - name: your-registry/sql-copilot-backend
+#     newTag: v1.2.0
+#   - name: your-registry/sql-copilot-frontend
+#     newTag: v1.2.0
+
+commonLabels:
+  app.kubernetes.io/name: sql-copilot
+  app.kubernetes.io/managed-by: kustomize

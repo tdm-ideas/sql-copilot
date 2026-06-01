@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: SqlCopilot.API/Dockerfile
+    container_name: sql-copilot-backend
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ASPNETCORE_URLS=http://+:8080
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost:4200}
+    depends_on:
+      ollama:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    networks:
+      - sql-copilot-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - API_URL=${API_URL:-http://localhost:5000}
+    container_name: sql-copilot-frontend
+    ports:
+      - "4200:8080"
+    depends_on:
+      - backend
+    networks:
+      - sql-copilot-net
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sql-copilot-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+    networks:
+      - sql-copilot-net
+
+volumes:
+  ollama-models:
+
+networks:
+  sql-copilot-net:
+    driver: bridge

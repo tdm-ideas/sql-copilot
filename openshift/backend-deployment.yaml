@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-copilot-backend
+  namespace: sql-copilot
+  labels:
+    app: sql-copilot-backend
+    app.kubernetes.io/part-of: sql-copilot
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sql-copilot-backend
+  template:
+    metadata:
+      labels:
+        app: sql-copilot-backend
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 0
+      containers:
+        - name: backend
+          image: your-registry/sql-copilot-backend:latest
+          ports:
+            - containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: sql-copilot-config
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql-copilot-backend
+  namespace: sql-copilot
+  labels:
+    app: sql-copilot-backend
+spec:
+  selector:
+    app: sql-copilot-backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP

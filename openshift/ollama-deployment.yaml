@@ -1,0 +1,111 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ollama-models-pvc
+  namespace: sql-copilot
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi          # sqlcoder-7b-2 is ~8GB, leave headroom
+  storageClassName: standard  # Replace with your OpenShift storage class
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sql-copilot-ollama
+  namespace: sql-copilot
+  labels:
+    app: sql-copilot-ollama
+    app.kubernetes.io/part-of: sql-copilot
+spec:
+  replicas: 1                 # Ollama is stateful — single replica
+  strategy:
+    type: Recreate            # Required for RWO PVC
+  selector:
+    matchLabels:
+      app: sql-copilot-ollama
+  template:
+    metadata:
+      labels:
+        app: sql-copilot-ollama
+    spec:
+      initContainers:
+        # Pull the model on first startup if not already present
+        - name: model-puller
+          image: ollama/ollama:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              ollama serve &
+              sleep 5
+              ollama pull defog/sqlcoder-7b-2
+              kill %1
+          env:
+            - name: OLLAMA_KEEP_ALIVE
+              value: "24h"
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "500m"
+            limits:
+              memory: "4Gi"
+              cpu: "2"
+      containers:
+        - name: ollama
+          image: ollama/ollama:latest
+          ports:
+            - containerPort: 11434
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: sql-copilot-config
+          resources:
+            requests:
+              memory: "8Gi"
+              cpu: "2"
+            limits:
+              memory: "16Gi"
+              cpu: "4"
+              # Uncomment if your OpenShift cluster has GPU nodes:
+              # nvidia.com/gpu: "1"
+          livenessProbe:
+            httpGet:
+              path: /api/tags
+              port: 11434
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /api/tags
+              port: 11434
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          volumeMounts:
+            - name: models
+              mountPath: /root/.ollama
+      volumes:
+        - name: models
+          persistentVolumeClaim:
+            claimName: ollama-models-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sql-copilot-ollama
+  namespace: sql-copilot
+  labels:
+    app: sql-copilot-ollama
+spec:
+  selector:
+    app: sql-copilot-ollama
+  ports:
+    - name: http
+      port: 11434
+      targetPort: 11434
+  type: ClusterIP              # Internal only — Ollama never exposed externally

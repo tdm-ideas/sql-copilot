@@ -1,0 +1,20 @@
+# Environment
+.env
+*.env.local
+
+# .NET
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+
+# Angular
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
