@@ -1,5 +1,6 @@
-using SqlCopilot.API.Services;
+using SqlCopilot.API.Controllers;
 using SqlCopilot.API.Middleware;
+using SqlCopilot.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
