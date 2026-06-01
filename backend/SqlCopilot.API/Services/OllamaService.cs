@@ -3,9 +3,9 @@ using SqlCopilot.API.Models;
 
 namespace SqlCopilot.API.Services;
 
-public class OllamaService(HttpClient http, ILogger<OllamaService> logger)
+public class OllamaService(HttpClient http, IConfiguration config, ILogger<OllamaService> logger)
 {
-    private const string Model = "defog/sqlcoder-7b-2";
+    private string Model => config["OLLAMA_MODEL"] ?? "qwen2.5-coder:7b";
 
     private static readonly JsonSerializerOptions JsonOpts = new()
     {

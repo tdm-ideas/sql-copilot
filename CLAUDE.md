@@ -42,7 +42,7 @@ docker-compose up --build
 
 ## First-Time Ollama Model Pull
 ```bash
-docker exec -it sql-copilot-ollama ollama pull defog/sqlcoder-7b-2
+docker exec -it sql-copilot-ollama ollama pull qwen2.5-coder:7b
 ```
 
 ## Building for OpenShift
